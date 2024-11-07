@@ -11,7 +11,7 @@ main.py: Main script for training and evaluating the model
 requirements.txt: Required packages
 ## Setup
 Clone the Repository
-Run git clone https://github.com/your_username/your_repository.git and navigate to the project directory with cd your_repository.
+Run git clone https://github.com/JoeVonDahab/your_repository.git and navigate to the project directory with cd your_repository.
 
 Create a Virtual Environment
 With Conda, run conda create -n logistic_regression_env python=3.8 and activate it with conda activate logistic_regression_env.
