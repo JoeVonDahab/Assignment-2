@@ -11,7 +11,7 @@ main.py: Main script for training and evaluating the model
 requirements.txt: Required packages
 ## Setup
 Clone the Repository
-Run git clone https://github.com/JoeVonDahab/your_repository.git and navigate to the project directory with cd your_repository.
+Run git clone https://github.com/JoeVonDahab/Assignment-2/ and navigate to the project directory with cd Assignment-2/.
 
 Create a Virtual Environment
 With Conda, run conda create -n logistic_regression_env python=3.8 and activate it with conda activate logistic_regression_env.
@@ -22,7 +22,7 @@ Run pip install -r requirements.txt.
 Ensure Data Availability
 Place NSCLCdata.csv in the data/ directory.
 
-Running the Model
+## Running the Model
 Execute main.py to train and evaluate the logistic regression model by running python main.py.
 
 Main Script Overview
