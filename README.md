@@ -1,5 +1,6 @@
-Assignment 2: Logistic Regression
-Project Overview
+# Assignment 2: Logistic Regression
+
+## Project Overview
 This project implements a logistic regression model from scratch to predict whether a patient has non-small cell lung cancer (NSCLC) or small cell lung cancer based on medical features. The model is trained and evaluated on a simulated medical record dataset.
 
 Key Components:
