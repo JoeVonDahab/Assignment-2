@@ -1,190 +1,222 @@
-# importing dependencies
+# logreg.py
+
+import sys
+import os
+
+# Add the directory containing this script to sys.path
+script_dir = os.path.dirname(os.path.abspath(__file__))
+if script_dir not in sys.path:
+    sys.path.append(script_dir)
+
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-class BaseRegressor():
-    def __init__(self, num_feats, learning_rate=0.1, tol=0.001, max_iter=100, batch_size=12):
-        """
-        No need to modify
-        """
-        # Initializing parameters: This is needed for gradient descent. 
-        self.W = np.random.randn(num_feats + 1).flatten()
-        
-        # Assigning Hyperparameters: You may need to adjust learning rate, batch size, etc for better accuracy 
+from utils import loadDataset  # Import remains unchanged
+
+def sigmoid(z):
+    """
+    Numerically stable sigmoid function.
+    """
+    pos_mask = z >= 0
+    neg_mask = ~pos_mask
+    result = np.zeros_like(z)
+    
+    # For positive z, no risk of overflow
+    result[pos_mask] = 1 / (1 + np.exp(-z[pos_mask]))
+    
+    # For negative z, to avoid overflow in exp(z)
+    exp_z = np.exp(z[neg_mask])
+    result[neg_mask] = exp_z / (1 + exp_z)
+    
+    return result
+
+class BaseRegressor:
+    def __init__(self, num_feats, learning_rate=0.001, tol=0.0001, max_iter=500, batch_size=16):
+        self.W = np.random.randn(num_feats + 1).flatten() * 0.01  # Including bias term
         self.lr = learning_rate
         self.tol = tol
         self.max_iter = max_iter
         self.batch_size = batch_size
-        
-        # This will need to be adjusted as you add or remove features
-        self.num_feats = num_feats
-        
-        # Defining list for storing Loss History: Makes it so you can visualize your loss descending, ascending, or not moving
+        self.num_feats = num_feats  # Number of features without bias term
         self.loss_history_train = []
         self.loss_history_val = []
-        
+
     def calculate_gradient(self, X, y):
-        # Kept empty as when you are inheriting, you overwrite this with LogisticRegression's calculate_gradient method
-        pass
-    
+        raise NotImplementedError("Subclass must implement this method.")
+
     def loss_function(self, y_true, y_pred):
-        # Kept empty as when you are inheriting, you overwrite this with LogisticRegression's loss_function method
-        pass
-    
+        raise NotImplementedError("Subclass must implement this method.")
+
     def make_prediction(self, X):
-        # Kept empty as when you are inheriting, you overwrite this with LogisticRegression's make_prediction method
-        pass
-    
+        raise NotImplementedError("Subclass must implement this method.")
+
     def train_model(self, X_train, y_train, X_val, y_val):
-        """
-        Model training once you've created make_prediction, loss_functino, and calculate_gradient. No need to modify
-        """
-        # Padding data with vector of ones for bias term
-        # Important!!!! Remember workshop 2 Linear regression and Gradient Descent
-        X_train = np.hstack([X_train, np.ones((X_train.shape[0], 1))])
-        X_val = np.hstack([X_val, np.ones((X_val.shape[0], 1))])
-        
-        # Defining initial values for while loop
+        # Check for NaN values in the training data
+        if np.isnan(X_train).any() or np.isnan(y_train).any():
+            raise ValueError("Training data contains NaN values.")
+
+        # Padding data with a column of ones for the bias term
+        X_train = self._add_bias(X_train)
+        X_val = self._add_bias(X_val)
+
         prev_update_size = 1
         iteration = 1
-        
-        # Gradient descent
-        while prev_update_size > self.tol and iteration < self.max_iter:
-            
-            # Shuffling the training data for each epoch of training
-            shuffle_arr = np.concatenate([X_train, np.expand_dims(y_train, 1)], axis=1)
-            
-            # In place shuffle: Prevents your gradient from being bias to where data is being presented
-            np.random.shuffle(shuffle_arr)
-            X_train = shuffle_arr[:, :-1]
-            y_train = shuffle_arr[:, -1].flatten()
-            num_batches = int(X_train.shape[0]/self.batch_size) + 1
-            X_batch = np.array_split(X_train, num_batches)
-            y_batch = np.array_split(y_train, num_batches)
-            
-            # Generating list to save the param updates per batch
+
+        while prev_update_size > self.tol and iteration <= self.max_iter:
+            # Shuffle the training data
+            shuffle_indices = np.random.permutation(len(y_train))
+            X_train_shuffled = X_train[shuffle_indices]
+            y_train_shuffled = y_train[shuffle_indices]
+
+            num_batches = int(np.ceil(X_train.shape[0] / self.batch_size))
+            X_batches = np.array_split(X_train_shuffled, num_batches)
+            y_batches = np.array_split(y_train_shuffled, num_batches)
+
             update_size_epoch = []
-            
-            # Iterating through batches (full for loop is one epoch of training)
-            for X_train, y_train in zip(X_batch, y_batch):
-                # Making prediction on batch
-                y_pred = self.make_prediction(X_train)
-                
-                # Calculating loss
-                loss_train = self.loss_function(X_train, y_train)
-                
-                # Adding current loss to loss history record
-                self.loss_history_train.append(loss_train)
-                
-                # Storing previous weights and bias
-                prev_W = self.W
-                # Calculating gradient of loss function with respect to each parameter
-                grad = self.calculate_gradient(X_train, y_train)
-                
-                # Updating parameters
-                new_W = prev_W - self.lr * grad 
-                self.W = new_W
-                
-                # Saving step size
-                update_size_epoch.append(np.abs(new_W - prev_W))
-                
-                # Validation pass
-                loss_val = self.loss_function(X_val, y_val)
-                self.loss_history_val.append(loss_val)
-                
-            # Defining step size as the average over the past epoch
-            prev_update_size = np.mean(np.array(update_size_epoch))
-            # Updating iteration number
+            epoch_loss_train = []
+
+            for X_batch, y_batch in zip(X_batches, y_batches):
+                y_pred = self.make_prediction(X_batch)
+                loss_train = self.loss_function(y_batch, y_pred)
+                epoch_loss_train.append(loss_train)
+
+                prev_W = self.W.copy()
+                grad = self.calculate_gradient(X_batch, y_batch)
+                self.W -= self.lr * grad  # Update weights
+
+                update_size_epoch.append(np.linalg.norm(self.W - prev_W))
+
+            # Calculate average training loss for the epoch
+            avg_loss_train = np.mean(epoch_loss_train)
+            self.loss_history_train.append(avg_loss_train)
+
+            # Calculate validation loss
+            y_val_pred = self.make_prediction(X_val)
+            loss_val = self.loss_function(y_val, y_val_pred)
+            self.loss_history_val.append(loss_val)
+
+            prev_update_size = np.mean(update_size_epoch)
             iteration += 1
-    
+
+            # Optional: print losses for monitoring
+            print(f"Epoch {iteration-1}, Training Loss: {avg_loss_train:.4f}, Validation Loss: {loss_val:.4f}")
+
+        print("Training completed.")
+
     def plot_loss_history(self):
-        """
-        Plots the loss history after training is complete. No need to modify
-        """
-        loss_hist = self.loss_history_train
-        loss_hist_val = self.loss_history_val
-        assert len(loss_hist) > 0, "Need to run training before plotting loss history"
-        fig, axs = plt.subplots(2, figsize=(8,8))
+        assert len(self.loss_history_train) > 0, "Need to run training before plotting loss history"
+
+        fig, axs = plt.subplots(2, figsize=(8, 8))
         fig.suptitle('Loss History')
-        axs[0].plot(np.arange(len(loss_hist)), loss_hist)
+        axs[0].plot(self.loss_history_train)
         axs[0].set_title('Training Loss')
-        axs[1].plot(np.arange(len(loss_hist_val)), loss_hist_val)
+        axs[1].plot(self.loss_history_val)
         axs[1].set_title('Validation Loss')
-        plt.xlabel('Steps')
-        axs[0].set_ylabel('Train Loss')
-        axs[1].set_ylabel('Val Loss')
-        fig.tight_layout()
-        
+        axs[1].set_xlabel('Epochs')
+        axs[0].set_ylabel('Loss')
+        axs[1].set_ylabel('Loss')
+        plt.tight_layout()
+        plt.show()
 
-# import required modules
+    def _add_bias(self, X):
+        """
+        Add a column of ones to the input data matrix to account for the bias term.
+        """
+        return np.hstack([X, np.ones((X.shape[0], 1))])
+
 class LogisticRegression(BaseRegressor):
-    def __init__(self, num_feats, learning_rate=0.1, tol=0.0001, max_iter=100, batch_size=12):
-        """
-        Initialization for Logistic Regression
-
-        Args:
-            num_feats (int): Number of features you decide to include in your model.
-            learning_rate (float, optional): Sets Learning Rate. Defaults to 0.1.
-            tol (float, optional): Sets Tolerance. Defaults to 0.0001.
-            max_iter (int, optional): Sets Max iteration. Defaults to 100.
-            batch_size (int, optional): Sets Batch Size. Defaults to 12.
-        """
-        
-        # super() will be something commonly seen
-        # This python built-in function will allow you to access methods from the class you are inheriting from!
-        # This is this class will be able to use train_model and plot_loss_history! :) 
+    def __init__(self, num_feats, learning_rate=0.001, tol=0.0001, max_iter=500, batch_size=16, regularization_strength=0.01):
         super().__init__(num_feats, learning_rate, tol, max_iter, batch_size)
-        
+        self.regularization_strength = regularization_strength  # L2 regularization strength
+
     def calculate_gradient(self, X, y) -> np.ndarray:
-        """
-        TODO: Write function to calculate gradient of the
-        logistic loss function to update the weights 
-        
-        Refer to Workshop 2 and 3 for some clues on how to start!
+        m = X.shape[0]
+        z = np.dot(X, self.W)
+        prediction = sigmoid(z)
+        error = prediction - y
+        # Include L2 regularization term
+        gradient = (1 / m) * np.dot(X.T, error) + self.regularization_strength * self.W
+        return gradient
 
-        Params:
-            X (np.ndarray): feature values
-            y (np.array): labels corresponding to X
+    def loss_function(self, y_true, y_pred) -> float:
+        m = y_true.shape[0]
+        # Clip predictions to avoid log(0)
+        y_pred = np.clip(y_pred, 1e-15, 1 - 1e-15)
+        # Include L2 regularization term
+        regularization_term = (self.regularization_strength / 2) * np.sum(self.W ** 2)
+        loss = - (1 / m) * np.sum(
+            y_true * np.log(y_pred) + (1 - y_true) * np.log(1 - y_pred)
+        ) + regularization_term
+        return loss
 
-        Returns: 
-            gradients for a given loss function type np.ndarray (n-dimensional array)
-        """
-        
-        
-        pass
-    
-    def loss_function(self, X, y) -> float:
-        """
-        TODO: Get y_pred from input X and implement binary cross 
-        entropy loss function. Binary cross entropy loss assumes that 
-        the classification is either 1 or 0, not continuous, making
-        it more suited for (binary) classification.    
+    def make_prediction(self, X) -> np.ndarray:
+        # Pad X with bias term if not already padded
+        if X.shape[1] == self.num_feats:
+            X = self._add_bias(X)
+        z = np.dot(X, self.W)
+        y_pred = sigmoid(z)
+        return y_pred
 
-        Params:
-            X (np.ndarray): feature values
-            y (np.array): labels corresponding to X
+if __name__ == "__main__":
+    # Load dataset
+    from sklearn.preprocessing import StandardScaler
 
-        Returns: 
-            average loss 
-        """
-        pass
-    
-    def make_prediction(self, X) -> np.array:
-        """
-        TODO: implement logistic function to get estimates (y_pred) for input
-        X values. The logistic function is a transformation of the linear model W.T(X)+b 
-        into an "S-shaped" curve that can be used for binary classification
+    # Specify features to use
+    features = [
+        'Penicillin V Potassium 500 MG',
+        'Computed tomography of chest and abdomen',
+        'Plain chest X-ray (procedure)',
+        'Low Density Lipoprotein Cholesterol',
+        'Creatinine',
+        'AGE_DIAGNOSIS'
+    ]
 
-        Params: 
-            X (np.ndarray): Set of feature values to make predictions for
+    X_train, X_val, y_train, y_val = loadDataset(features=features, split_percent=0.8)
 
-        Returns: 
-            y_pred for given X
-        """
+    # Ensure labels are binary and of integer type
+    y_train = y_train.astype(int)
+    y_val = y_val.astype(int)
+    assert set(np.unique(y_train)).issubset({0, 1}), "y_train contains values other than 0 and 1."
 
-        pass
+    # Feature scaling
+    scaler = StandardScaler()
+    X_train = scaler.fit_transform(X_train)
+    X_val = scaler.transform(X_val)
+
+    # Optionally add polynomial features to increase model capacity
+    from sklearn.preprocessing import PolynomialFeatures
+
+    poly = PolynomialFeatures(degree=2, interaction_only=False, include_bias=False)
+    X_train_poly = poly.fit_transform(X_train)
+    X_val_poly = poly.transform(X_val)
+
+    num_features = X_train_poly.shape[1]
+    log_reg_model = LogisticRegression(
+        num_feats=num_features,
+        learning_rate=0.001,          # Reduced learning rate
+        max_iter=500,                 # Increased number of epochs
+        batch_size=16,
+        regularization_strength=0.01  # Added regularization strength
+    )
+
+    log_reg_model.train_model(X_train_poly, y_train, X_val_poly, y_val)
+    log_reg_model.plot_loss_history()
+
+    # Making predictions on validation set
+    y_pred = log_reg_model.make_prediction(X_val_poly)
+    print("Predicted probabilities:", y_pred)
+
+    # Convert probabilities to binary predictions
+    y_pred_class = (y_pred >= 0.5).astype(int)
+
+    # Calculate accuracy
+    from sklearn.metrics import accuracy_score, classification_report
+    accuracy = accuracy_score(y_val, y_pred_class)
+    print(f"Validation Accuracy: {accuracy:.2f}")
+
+    # Additional performance metrics
+    print("Classification Report:")
+    print(classification_report(y_val, y_pred_class))
 
 
-
-    

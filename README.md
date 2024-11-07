@@ -1,109 +1,240 @@
+Assignment 2: Logistic Regression
+Project Overview
+This project implements a logistic regression model from scratch to predict whether a patient has non-small cell lung cancer (NSCLC) or small cell lung cancer based on medical features. The model is trained and evaluated on a simulated medical record dataset.
 
-# Assignment 2: Logistic Regression 
-## Assignment Goal
+Key Components:
+Custom Logistic Regression Implementation: Includes gradient calculation, loss function, and prediction methods.
+Data Preprocessing: Feature scaling and polynomial feature expansion to enhance model capacity.
+Model Training and Evaluation: Training loop with L2 regularization and performance metrics.
+Unit Tests: Comprehensive tests to ensure the correctness of the implementation.
+Table of Contents
+Project Structure
+Prerequisites
+Installation
+Running the Model
+Understanding the Output
+Running Unit Tests
+Customizing the Model
+Dataset Information
+References
+Project Structure
+bash
+Copy code
+project_directory/
+├── data/
+│   └── NSCLCdata.csv
+├── regression/
+│   ├── __init__.py
+│   ├── logreg.py
+│   └── utils.py
+├── test/
+│   └── test_logreg.py
+├── main.py
+├── requirements.txt
+└── README.md
+data/NSCLCdata.csv: The dataset containing patient medical records.
+regression/: Package containing the logistic regression implementation and utilities.
+logreg.py: Implementation of the logistic regression model.
+utils.py: Utility functions, including dataset loading.
+test/test_logreg.py: Unit tests for the logistic regression model.
+main.py: Script to train and evaluate the logistic regression model.
+requirements.txt: List of required Python packages.
+README.md: Instructions and information about the project.
+Prerequisites
+Python 3.6 or higher
+Anaconda or Miniconda (Recommended): For managing virtual environments.
+Git: For cloning the repository.
+Installation
+1. Clone the Repository
+Open a terminal and clone the repository:
 
-The goal of this project is to write a class that performs logistic regression and apply it to the NSCLC dataset to predict whether a patient has small cell or non-small cell lung cancer **(NSCLC)** using demographic, medication, lab values, and procedures performed prior to their diagnosis features.
+bash
+Copy code
+git clone https://github.com/your_username/your_repository.git
+cd your_repository
+2. Create a Virtual Environment
+It's recommended to use a virtual environment to manage dependencies.
 
-## Assignment Overview 
+Using Conda:
+bash
+Copy code
+conda create -n logistic_regression_env python=3.8
+conda activate logistic_regression_env
+Using venv:
+bash
+Copy code
+python -m venv venv
+# Activate the environment
+# On Windows:
+venv\Scripts\activate
+# On Unix or MacOS:
+source venv/bin/activate
+3. Install Dependencies
+Install the required packages using pip:
 
-In class, we learned how to derive an Ordinary Least Squares (OLS) estimator in a linear regression model, used to identify the best fitting line **(see workshop 2)**.
+bash
+Copy code
+pip install -r requirements.txt
+If you don't have a requirements.txt file, the essential packages are:
 
-For this assignment, we will be implementing a logistic regression model using the same framework. 
+bash
+Copy code
+pip install numpy pandas scikit-learn matplotlib pytest
+4. Ensure Data Availability
+Ensure that the NSCLCdata.csv file is located in the data/ directory:
 
-Logistic regression is useful for classification because the function outputs a value between 0 and 1, corresponding to a categorical classification
+kotlin
+Copy code
+data/
+└── NSCLCdata.csv
+Running the Model
+To train and evaluate the logistic regression model, run the main.py script:
 
-For this project, you will be given a set of simulated medical record data ([reference](https://doi.org/10.1093/jamia/ocx079)) from patients with small cell or non-small cell lung cancer. Write a logistic regression to predict whether a person belongs in one class or another. 
+bash
+Copy code
+python main.py
+What Happens When You Run main.py
+The script performs the following steps:
 
-## Starting the Assignment
+Data Loading: Loads the NSCLC dataset with specified features.
+Data Preprocessing:
+Scales the features using StandardScaler.
+Adds polynomial features to capture non-linear relationships.
+Model Initialization: Initializes the logistic regression model with hyperparameters.
+Model Training: Trains the model on the training data, printing loss at each epoch.
+Model Evaluation:
+Makes predictions on the validation set.
+Calculates validation accuracy and displays a classification report.
+Visualization: Plots the training and validation loss over epochs.
+Understanding the Output
+Training Progress
+During training, the script prints the training and validation loss at each epoch:
 
-Steps: 
+yaml
+Copy code
+Epoch 1, Training Loss: 0.6931, Validation Loss: 0.6928
+Epoch 2, Training Loss: 0.6915, Validation Loss: 0.6911
+...
+Epoch 500, Training Loss: 0.2994, Validation Loss: 0.2907
+Training completed.
+Predicted Probabilities
+After training, the script outputs the predicted probabilities for the validation set:
 
-    1. Fork this Repo and clone the fork
+less
+Copy code
+Predicted probabilities: [0.99977604 0.21581652 0.98388893 ...]
+Validation Accuracy
+The script calculates and prints the validation accuracy:
 
-    2. Create a conda environment from the requirements.txt file 
-        - This will ensure you have the minimum requirements to run this repo
-        - If you are unsure of how to do this, please consult this conda cheatsheet 
-([Conda Cheatsheet](https://docs.conda.io/projects/conda/en/4.6.0/_downloads/52a95608c49671267e40c689e0bc00ca/conda-cheatsheet.pdf))
+mathematica
+Copy code
+Validation Accuracy: 0.93
+Classification Report
+A detailed performance report is displayed:
 
-        - Activate the Conda Environment
-        - Make sure you correctly select the interpreter path for VSCode
-        
-    3. Read the rest Assignment Context below
-        
-    4. Complete TODOs in logreg.py 
-        - calculate_gradient
-        - loss_function
-        - make_prediction
-    
-    5. Install Pytest & Make Local package
-        - Use flit: Same process as Assignment 1
-        - Note: Required for unit testing
+markdown
+Copy code
+Classification Report:
+              precision    recall  f1-score   support
 
-    6. Unit Testing
-        - Check if fit appropriately trains model & weights get updated
-        - Check loss approaches 0 
-        - Check predict works as intended
-    
-    7. Push to GitHub
-        - If you need a refresher, please consult this Git cheatsheet 
-        
-([Git Cheatsheet](https://education.github.com/git-cheat-sheet-education.pdf))
+           0       0.88      0.99      0.93       199
+           1       0.99      0.86      0.92       201
 
-# Assignment Context
-
-## Logistic Regression 
-
-To allow for binary classification using logistic regression, we use a sigmoid function to model
-the data. We will define a loss function to keep track of how the model performs. Instead of using Rsquared, like you've done before in workshops 2 & 3, we will be implementing a log loss
-(binary cross-entropy) function. This function will minimize the error when the predicted y is 
-close to an expected value of 1 or 0.
-
-Resources to help you get started: 
-* Sigmoid Function ([click here](https://towardsdatascience.com/derivative-of-the-sigmoid-function-536880cf918e))
-* Understanding Binary Cross-Entropy and log loss ([click here](https://towardsdatascience.com/understanding-binary-cross-entropy-log-loss-a-visual-explanation-a3ac6025181a))
-* Binary Cross-Entropy mathematical implementation ([click here](https://medium.com/@vergotten/binary-cross-entropy-mathematical-insights-and-python-implementation-31e5a4df78f3))
-
-
-
-## Dataset 
-Class labels are encoded in the NSCLC column of the dataset. This is what you are trying to predict.
-
-* 1 = NSCLC
-* 0 = Small cell
-
-A set of features has been pre-selected for you to use in **main.py**, but feel free 
-to use other features. 
-* Gender
-* Penicillin V Potassium 250 MG
-* Penicillin V Potassium 500 M
-* Computed tomography of chest and abdomen
-* Plain chest X-ray (procedure)', 'Diastolic Blood Pressure
-* Body Mass Index
-* Body Weight
-* Body Height
-* Systolic Blood Pressure
-* LDL Cholesterol
-* HDL Cholesterol
-* Triglycerides
-* etc...
-  
-A full list of features is provided in utils.py. Note: You do not need to modify anything
-in utils.py.
+    accuracy                           0.93       400
+   macro avg       0.93      0.93      0.92       400
+weighted avg       0.93      0.93      0.92       400
+Loss History Plot
+A plot window will appear showing the training and validation loss over epochs:
 
 
-# Grading (20 points total)
-## Code (9 points)
-* Correct implementation of calculate_gradient function (3)
-* Correct implementation of loss_function (3)
-* Correct implementation of make_prediction (3)
+Running Unit Tests
+Unit tests are provided to ensure the correctness of the logistic regression implementation.
 
-## Tests (8 points)
-* Test cases for gradient (2)
-* Test cases for loss (2)
-* Test cases for outputs (2)
-* Test cases for accuracy (2)
+Run Tests with Pytest
+Ensure you have pytest installed:
 
-## Documentation & GitHub (3 points)
-    9. Write comments documenting your code (2)
-    10. Push your finished assignment to GitHub (1)
+bash
+Copy code
+pip install pytest
+Run the tests:
 
+bash
+Copy code
+pytest
+Expected Output
+bash
+Copy code
+================================================= test session starts =================================================
+platform win32 -- Python 3.x.x, pytest-7.4.4, pluggy-1.0.0
+rootdir: path_to_project_directory
+collected 7 items
+
+test\test_logreg.py .......                                                                                     [100%]
+
+================================================== 7 passed in 5.63s ==================================================
+Customizing the Model
+Changing Features
+Modify the features list in main.py to include different features from the dataset:
+
+python
+Copy code
+features = [
+    'New Feature 1',
+    'New Feature 2',
+    # Add or remove features as needed
+]
+Adjusting Hyperparameters
+Experiment with different hyperparameters in the LogisticRegression initialization:
+
+python
+Copy code
+log_model = logreg.LogisticRegression(
+    num_feats=num_features,
+    learning_rate=0.001,          # Adjust learning rate
+    max_iter=500,                 # Adjust number of epochs
+    batch_size=16,                # Adjust batch size
+    regularization_strength=0.01  # Adjust regularization strength
+)
+Polynomial Features
+Change the degree of polynomial features to capture higher-order interactions:
+
+python
+Copy code
+poly = PolynomialFeatures(degree=3, interaction_only=False, include_bias=False)
+Dataset Information
+The dataset contains simulated medical records with various features:
+
+Target Variable: NSCLC (1 = Non-Small Cell Lung Cancer, 0 = Small Cell Lung Cancer)
+Available Features (not exhaustive):
+GENDER
+Penicillin V Potassium 250 MG
+Penicillin V Potassium 500 MG
+Computed tomography of chest and abdomen
+Plain chest X-ray (procedure)
+Diastolic Blood Pressure
+Body Mass Index
+Body Weight
+Body Height
+Systolic Blood Pressure
+Low Density Lipoprotein Cholesterol
+High Density Lipoprotein Cholesterol
+Triglycerides
+Total Cholesterol
+AGE_DIAGNOSIS
+... and more.
+You can view all features by inspecting the dataset or the loadDataset function in utils.py.
+
+References
+Logistic Regression Theory:
+Understanding Logistic Regression
+Binary Cross-Entropy Loss:
+Understanding Binary Cross-Entropy Loss
+Sigmoid Function:
+Derivative of the Sigmoid Function
+Dataset Reference:
+Synthetic Data Generation for Medical Datasets
+Troubleshooting
+Import Errors: Ensure that the regression package contains an __init__.py file.
+Data File Not Found: Verify that NSCLCdata.csv is in the data/ directory.
+Module Not Found: Adjust the PYTHONPATH or use sys.path.append() to include the project directory.
+Plot Not Displaying: Ensure matplotlib is installed and configured correctly.
